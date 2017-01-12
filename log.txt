@@ -1,0 +1,28 @@
+Using Theano backend.
+Using gpu device 0: Quadro K620 (CNMeM is enabled with initial size: 40.0% of memory, cuDNN 4007)
+Creat data ... - INFO - Total number of sentences in training data = 13
+Creat data ... - INFO - Total number of sentences in test data = 1
+Creat data ... - INFO - Creating vocab...
+Creat data ... - INFO - unigrams alphabet size = 316
+Current sent num = 0
+Current sent num = 0
+Creat data ... - INFO - bigrams alphabet size = 678
+Current sentence num = 0
+Creat data ... - INFO - OOV words count = 0, total words count = 4940, OOV ratio = 0.0
+Current sentence num = 0
+Creat data ... - INFO - OOV words count = 0, total words count = 115, OOV ratio = 0.0
+Current sentence num = 0
+Creat data ... - INFO - OOV words count = 0, total words count = 4940, OOV ratio = 0.0
+Current sentence num = 0
+Creat data ... - INFO - OOV words count = 0, total words count = 115, OOV ratio = 0.0
+{u'm-seg': 3, u's-seg': 2, u'b-seg': 0, u'e-seg': 1}
+{u's-seg': 2, u'b-seg': 0, u'e-seg': 1}
+Creat data ... - INFO - label alphabet size = 4
+Creat data ... - INFO - Loading pretrained word unigram embedding ...
+instance 1
+Traceback (most recent call last):
+  File "train_emb.py", line 160, in <module>
+    main()
+  File "train_emb.py", line 68, in main
+    print _bichars
+UnicodeEncodeError: 'ascii' codec can't encode characters in position 20-21: ordinal not in range(128)
