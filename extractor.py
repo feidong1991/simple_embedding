@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # @Author: feidong
 # @Date:   2017-01-04 15:51:15
-# @Last Modified by:   feidong
-# @Last Modified time: 2017-01-12 20:55:35
+# @Last Modified by:   feidong1991
+# @Last Modified time: 2017-01-12 21:38:17
 
 import os
 import codecs
@@ -103,7 +103,7 @@ def extractor_embeddings(model, uni_vocabfile, bi_vocabfile, uni_vecfile, bi_vec
         biL = range(1, bivocab_size)
     else:
         biL = range(0, bivocab_size-1)
-    print uniL, biL
+    # print uniL, biL
     uniMat = np.asarray(uniL).reshape(len(uniL), 1)
     uni_data = np.repeat(uniMat, 5, axis=1)
 
