@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # @Author: feidong
 # @Date:   2017-01-02 14:48:55
-# @Last Modified by:   feidong
-# @Last Modified time: 2017-01-12 20:31:17
+# @Last Modified by:   feidong1991
+# @Last Modified time: 2017-01-14 17:08:11
 
 import os
 import sys
@@ -43,6 +43,8 @@ def data_reader(path):
             line = line.strip()
             if line:
                 char = line.split()[0]
+                if not len(line.split()) == 2:
+                    print line
                 label = line.split()[1]
                 charL.append(char)
                 labelL.append(label)
@@ -171,7 +173,7 @@ def build_embedd_table(word_alphabet, embedd_dict, embedd_dim, caseless):
     return embedd_table
 
 
-def creat_data(trainpath, testpath, context_size, uni_vocabfile, bi_vocabfile, embed_dim=50, \
+def creat_data(trainpath=None, devpath=None, testpath=None, context_size=2, uni_vocabfile=None, bi_vocabfile=None, embed_dim=50, \
              uni_embpath=None, bi_embpath=None, load_biEmb=True):
 
     def get_indexes(sentences, vocab):
@@ -255,9 +257,13 @@ def creat_data(trainpath, testpath, context_size, uni_vocabfile, bi_vocabfile, e
         generate_context_data(trainpath, context_size)
     logger.info("Total number of sentences in training data = %s" % len(train_sentsList))
 
+    if devpath:
+        dev_sentsList, dev_labelList,  dev_sentlenL, dev_uni_contexts, dev_bi_contexts = \
+            generate_context_data(devpath, context_size)
+        logger.info("Total number of sentences in dev data = %s" % len(dev_sentsList))
+
     test_sentsList, test_labelList, test_sentlenL, test_uni_contexts, test_bi_contexts = \
         generate_context_data(testpath, context_size)
-
     logger.info("Total number of sentences in test data = %s" % len(test_sentsList))
     logger.info('Creating vocab...')
     # uni_vocab = Alphabet('unigrams')
@@ -269,6 +275,8 @@ def creat_data(trainpath, testpath, context_size, uni_vocabfile, bi_vocabfile, e
     next_idx = 2
 
     uni_vocab, next_idx = create_univocab(train_sentsList, uni_vocab, next_idx)
+    if devpath:
+        uni_vocab, next_idx = create_univocab(dev_sentsList, uni_vocab, next_idx)
     uni_vocab, next_idx = create_univocab(test_sentsList, uni_vocab, next_idx)
     # uni_vocab.close()
     logger.info("unigrams alphabet size = %s" % (len(uni_vocab)-1))    
@@ -280,6 +288,9 @@ def creat_data(trainpath, testpath, context_size, uni_vocabfile, bi_vocabfile, e
     bi_vocab[unknown_word] = 1
     next_idx = 2
     bi_vocab, next_idx = create_bivocab(train_sentsList, bi_vocab, next_idx)
+
+    if devpath:
+        bi_vocab, next_idx = create_bivocab(dev_sentsList, bi_vocab, next_idx)    
     bi_vocab, next_idx = create_bivocab(test_sentsList, bi_vocab, next_idx)
     # bi_vocab.close()
 
@@ -294,6 +305,7 @@ def creat_data(trainpath, testpath, context_size, uni_vocabfile, bi_vocabfile, e
     train_bi_indexes = get_indexes(train_bi_contexts, bi_vocab)
     test_bi_indexes = get_indexes(test_bi_contexts, bi_vocab)
 
+
     train_label_indexes, train_label_vocab = get_label_index(train_labelList)
     test_label_indexes, test_label_vocab = get_label_index(test_labelList)
     # assert len(train_label_vocab) == len(test_label_vocab)
@@ -305,6 +317,15 @@ def creat_data(trainpath, testpath, context_size, uni_vocabfile, bi_vocabfile, e
     uni_test = generate_matrix(test_uni_indexes)
     bi_test = generate_matrix(test_bi_indexes)
     label_test = generate_matrix(test_label_indexes)
+
+    if devpath:
+        dev_uni_indexes = get_indexes(dev_uni_contexts, uni_vocab)
+        dev_bi_indexes = get_indexes(dev_bi_contexts, bi_vocab)
+        dev_label_indexes, dev_label_vocab = get_label_index(dev_labelList)
+
+        uni_dev = generate_matrix(dev_uni_indexes)
+        bi_dev = generate_matrix(dev_bi_indexes)
+        label_dev = generate_matrix(dev_label_indexes)
 
     label_vocab = train_label_vocab
     logger.info("label alphabet size = %s" % len(label_vocab))
@@ -327,5 +348,10 @@ def creat_data(trainpath, testpath, context_size, uni_vocabfile, bi_vocabfile, e
     else:
         bi_embed_table = None
 
-    return uni_train, bi_train, uni_test, bi_test, label_train, label_test, \
-            uni_vocab, bi_vocab, label_vocab, [uni_embed_table], [bi_embed_table], train_sentlenL, test_sentlenL
+    if not devpath:
+        return uni_train, bi_train, None, None, uni_test, bi_test, label_train, None, label_test, \
+            uni_vocab, bi_vocab, label_vocab, [uni_embed_table], [bi_embed_table], train_sentlenL, None, test_sentlenL
+
+    else:
+        return uni_train, bi_train, uni_dev, bi_dev,  uni_test, bi_test, label_train, label_dev, label_test, \
+            uni_vocab, bi_vocab, label_vocab, [uni_embed_table], [bi_embed_table], train_sentlenL, dev_sentlenL, test_sentlenL 
