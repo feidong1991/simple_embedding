@@ -2,11 +2,11 @@
 # @Author: feidong
 # @Date:   2017-01-02 21:03:05
 # @Last Modified by:   feidong1991
-# @Last Modified time: 2017-01-12 21:14:14
+# @Last Modified time: 2017-01-15 14:38:04
 
 import os
 import sys
-from utils import *
+from utils2 import *
 import argparse
 import numpy as np
 from model import *
@@ -29,6 +29,7 @@ def main():
     parser.add_argument('--hidden_units', type=int, default=150, help='Num of units in hidden layer')
     parser.add_argument('--drop_rate', type=float, default=0.2, help='Dropout rate for layers')
     parser.add_argument('--train', type=str, help='train data path')
+    parser.add_argument('--dev', default=None,  help='dev data path')
     parser.add_argument('--test', type=str, help='test data path')
     parser.add_argument('--uni_vocab', type=str, help='unigram vocabulary path')
     parser.add_argument('--bi_vocab', type=str, help='bigram vocabulary path')
@@ -45,6 +46,7 @@ def main():
     args = parser.parse_args()
     bsize = args.batch_size
     trainpath = args.train
+    devpath = args.dev
     testpath = args.test
 
     uni_vocabpath = args.uni_vocab
@@ -53,8 +55,8 @@ def main():
     bi_embpath = args.bi_embed
 
     # load data
-    X1_train, X2_train, X1_test, X2_test,  y_train, y_test, uni_vocab, bi_vocab, label_vocab, uni_embed_table, bi_embed_table, train_sentlenL, test_sentlenL = \
-         creat_data(trainpath, testpath, args.context_size, uni_vocabpath, bi_vocabpath, args.embed_dim, uni_embpath, bi_embpath, load_biEmb=args.load_biEmb)
+    X1_train, X2_train, X1_dev, X2_dev,  X1_test, X2_test,  y_train, y_dev, y_test, uni_vocab, bi_vocab, label_vocab, uni_embed_table, bi_embed_table, train_sentlenL,  dev_sentlenL, test_sentlenL = \
+         creat_data(trainpath, devpath, testpath, args.context_size, uni_vocabpath, bi_vocabpath, args.embed_dim, uni_embpath, bi_embpath, load_biEmb=args.load_biEmb)
 
     idx2uni = {v: k for k,v in uni_vocab.iteritems()}
     idx2bi = {v: k for k,v in bi_vocab.iteritems()}
@@ -75,6 +77,8 @@ def main():
 
     Y_train = np_utils.to_categorical(y_train, num_classes)
     Y_test = np_utils.to_categorical(y_test, num_classes)
+    if args.dev:
+        Y_dev = np_utils.to_categorical(y_dev, num_classes)
     # for debugging
     print X1_train[0]
     print X2_train[0]
@@ -88,12 +92,12 @@ def main():
     if args.train_flag:
         logger.info("Train the model")
         checkpointer = ModelCheckpoint(filepath=modelpath, verbose=1, save_best_only=True)
-        model.fit([X1_train, X2_train], [Y_train], nb_epoch=args.num_epochs, batch_size=args.batch_size, validation_data=([X1_test, X2_test], [Y_test]), callbacks=[checkpointer], shuffle=True)
+        if args.dev:
+            model.fit([X1_train, X2_train], [Y_train], nb_epoch=args.num_epochs, batch_size=args.batch_size, validation_data=([X1_dev, X2_dev], [Y_dev]), callbacks=[checkpointer], shuffle=True)
+        else:
+            model.fit([X1_train, X2_train], [Y_train], nb_epoch=args.num_epochs, batch_size=args.batch_size, validation_data=([X1_test, X2_test], [Y_test]), callbacks=[checkpointer], shuffle=True)
 
     model.load_weights(modelpath)
-    pred_Y_test = model.predict([X1_test, X2_test], batch_size=32)
-    test_argmax = np.argmax(pred_Y_test, axis=1)
-    assert test_argmax.shape[0] == Y_test.shape[0]
 
     def get_sentlist(sentlenList, L):
         idx = 0
@@ -119,7 +123,24 @@ def main():
             labelList.append(labels)
         # print labelList
         return labelList
+    # dev evaluation
+    if args.dev:
+        pred_Y_dev = model.predict([X1_dev, X2_dev], batch_size=32)
+        dev_argmax = np.argmax(pred_Y_dev, axis=1)
+        assert dev_argmax.shape[0] == Y_dev.shape[0]
+        pred_dev_sentindexL = get_sentlist(dev_sentlenL, dev_argmax.tolist())
+        gold_dev_sentindexL = get_sentlist(dev_sentlenL, y_dev)
+
+        # get sent list of labels
+        pred_dev_sentL = get_labels(pred_dev_sentindexL, label_vocab)
+        gold_dev_sentL = get_labels(gold_dev_sentindexL, label_vocab)
+        prec, recall, fmeasure = get_ner_fmeasure(gold_dev_sentL, pred_dev_sentL)
+        logger.info("Dev data: precision = %s, recall = %s, F-measure = %s " % (prec, recall, fmeasure))
+
     # test evaluation
+    pred_Y_test = model.predict([X1_test, X2_test], batch_size=32)
+    test_argmax = np.argmax(pred_Y_test, axis=1)
+    assert test_argmax.shape[0] == Y_test.shape[0]
     pred_sent_indexL = get_sentlist(test_sentlenL, test_argmax.tolist())
     gold_sent_indexL = get_sentlist(test_sentlenL, y_test)
 
@@ -133,7 +154,7 @@ def main():
     #         print gold_testList[i][j], pred_testList[i][j]
 
     prec, recall, fmeasure = get_ner_fmeasure(gold_sentL, pred_sentL)
-    logger.info("Precision = %s, recall = %s, F-measure = %s " % (prec, recall, fmeasure))
+    logger.info("Test data: precision = %s, recall = %s, F-measure = %s " % (prec, recall, fmeasure))
 
     uni_embeddings, bi_embeddings = extractor_embeddings(model, uni_vocabpath, bi_vocabpath, args.out_embed1, args.out_embed2)
     Wh1, bh1 = extractor_weights(model, 'h')
